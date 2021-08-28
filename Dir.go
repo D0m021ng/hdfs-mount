@@ -179,15 +179,18 @@ func (this *Dir) NodeFromAttrs(attrs Attrs) fs.Node {
 // Performs Stat() query on the backend
 func (this *Dir) LookupAttrs(name string, attrs *Attrs) error {
 	var err error
-	*attrs, err = this.FileSystem.HdfsAccessor.Stat(path.Join(this.AbsolutePath(), name))
+	var attr Attrs
+	attr, err = this.FileSystem.HdfsAccessor.Stat(path.Join(this.AbsolutePath(), name))
 	if err != nil {
 		// It is a warning as each time new file write tries to stat if the file exists
 		Warning.Print("stat [", name, "]: ", err.Error(), err)
+		this.EntriesRemove(name)
 		if pathError, ok := err.(*os.PathError); ok && (pathError.Err == os.ErrNotExist) {
 			return fuse.ENOENT
 		}
 		return err
 	}
+	*attrs = attr
 	// expiration time := now + 5 secs // TODO: make configurable
 	attrs.Expires = this.FileSystem.Clock.Now().Add(5 * time.Second)
 	return nil
